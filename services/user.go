@@ -14,6 +14,7 @@ type UserServiceServer interface {
 	AddUser(context.Context, *pb.User) (*pb.User, error)
 	AddUserVerbose(ctx context.Context, in *pb.User) (*pb.User, error)
 	AddUsers(ctx context.Context) (*pb.User, error)
+	AddUserStreamBoth(ctx context.Context) (*pb.User, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -89,7 +90,7 @@ func (*UserService) AddUsers(stream pb.UserService_AddUsersServer) error {
 			})
 		}
 		if err != nil {
-			log.Fatalf("Could not receive stream", err)
+			log.Fatalf("Could not receive stream: %v", err)
 		}
 
 		users = append(users, &pb.User{
@@ -99,5 +100,27 @@ func (*UserService) AddUsers(stream pb.UserService_AddUsersServer) error {
 		})
 
 		fmt.Println("Adding", req.GetName())
+	}
+}
+
+func (*UserService) AddUserStreamBoth(stream pb.UserService_AddUserStreamBothServer) error {
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			log.Fatalf("Could not receive stream from the client: %v", err)
+		}
+
+		err = stream.Send(&pb.UserResultStream{
+			Status: "Added",
+			User:   req,
+		})
+
+		if err != nil {
+			log.Fatalf("Could not send strem to the client: %v", err)
+		}
 	}
 }

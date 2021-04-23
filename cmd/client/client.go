@@ -27,7 +27,8 @@ func main() {
 	fmt.Println("Select function:\n",
 		"  1 - AddUser\n",
 		"  2 - AddUserVerbose\n",
-		"  3 - AddUsers")
+		"  3 - AddUsers\n",
+		"  4 - AddUserStreamBoth")
 
 	reader := bufio.NewReader(os.Stdin)
 	option, _, err := reader.ReadRune()
@@ -47,6 +48,10 @@ func main() {
 	case '3':
 		fmt.Println("AddUsers was selected")
 		AddUsers(client)
+		break
+	case '4':
+		fmt.Println("AddUserStreamBoth was selected")
+		AddUserStreamBoth(client)
 		break
 	}
 }
@@ -115,7 +120,7 @@ func AddUsers(client pb.UserServiceClient) {
 
 	stream, err := client.AddUsers(context.Background())
 	if err != nil {
-		log.Fatalf("Could not create request", err)
+		log.Fatalf("Could not create request: %v", err)
 	}
 
 	for _, req := range reqs {
@@ -125,8 +130,64 @@ func AddUsers(client pb.UserServiceClient) {
 
 	res, err := stream.CloseAndRecv()
 	if err != nil {
-		log.Fatalf("Could not receive response", err)
+		log.Fatalf("Could not receive response: %v", err)
 	}
 
 	fmt.Println(res)
+}
+
+func AddUserStreamBoth(client pb.UserServiceClient) {
+
+	stream, err := client.AddUserStreamBoth(context.Background())
+	if err != nil {
+		log.Fatalf("Could not create request: %v", err)
+	}
+
+	reqs := []*pb.User{
+		&pb.User{
+			Id:    "u1",
+			Name:  "Dilthey Aislan",
+			Email: "dilthey@aislan.com",
+		},
+		&pb.User{
+			Id:    "u2",
+			Name:  "Noah de Paula",
+			Email: "noah@noah.com",
+		},
+		&pb.User{
+			Id:    "u3",
+			Name:  "Aislan Dilthey",
+			Email: "aislan@dilthey.com",
+		},
+	}
+
+	go func() {
+		for _, req := range reqs {
+			fmt.Printf("\nSending user: %v", req.GetName())
+			stream.Send(req)
+			time.Sleep(time.Second * 3)
+		}
+		stream.CloseSend()
+	}()
+
+	wait := make(chan int)
+
+	go func() {
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("Could not receive data: %v", err)
+				break
+			}
+
+			fmt.Printf("\nReceiving user %v user with status: %v\n", res.GetUser().GetName(), res.GetStatus())
+		}
+
+		close(wait)
+	}()
+
+	<-wait
 }
