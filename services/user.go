@@ -43,6 +43,13 @@ func (*UserService) AddUserVerbose(req *pb.User, stream pb.UserService_AddUserVe
 	time.Sleep(time.Second * 3)
 
 	stream.Send(&pb.UserResultStream{
+		Status: "Inserting",
+		User:   &pb.User{},
+	})
+
+	time.Sleep(time.Second * 3)
+
+	stream.Send(&pb.UserResultStream{
 		Status: "User has been inserted",
 		User: &pb.User{
 			Id:    "123",
