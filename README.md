@@ -1,6 +1,6 @@
 # grpc-golang
 
-gRPC client and server communication using Golang 
+gRPC client and server communication with stream using Golang 
 
 ## Starting server
 
