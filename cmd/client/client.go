@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"github.com/diltheyaislan/grpc-golang/pb/pb"
 	"google.golang.org/grpc"
@@ -23,22 +24,29 @@ func main() {
 
 	client := pb.NewUserServiceClient(connection)
 
-	fmt.Println("Select function:\n  1 - AddUser\n  2 - AddUserVerbose")
+	fmt.Println("Select function:\n",
+		"  1 - AddUser\n",
+		"  2 - AddUserVerbose\n",
+		"  3 - AddUsers")
 
 	reader := bufio.NewReader(os.Stdin)
-	char, _, err := reader.ReadRune()
+	option, _, err := reader.ReadRune()
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	switch char {
+	switch option {
 	case '1':
-		fmt.Println("AddUser selected")
+		fmt.Println("AddUser was selected")
 		AddUser(client)
 		break
 	case '2':
-		fmt.Println("AddUserVerbose selected")
+		fmt.Println("AddUserVerbose was selected")
 		AddUserVerbose(client)
+		break
+	case '3':
+		fmt.Println("AddUsers was selected")
+		AddUsers(client)
 		break
 	}
 }
@@ -84,5 +92,41 @@ func AddUserVerbose(client pb.UserServiceClient) {
 
 		fmt.Println("Status:", stream.Status, " - ", stream.GetUser())
 	}
+}
 
+func AddUsers(client pb.UserServiceClient) {
+	reqs := []*pb.User{
+		&pb.User{
+			Id:    "u1",
+			Name:  "Dilthey Aislan",
+			Email: "dilthey@aislan.com",
+		},
+		&pb.User{
+			Id:    "u2",
+			Name:  "Noah de Paula",
+			Email: "noah@noah.com",
+		},
+		&pb.User{
+			Id:    "u3",
+			Name:  "Aislan Dilthey",
+			Email: "aislan@dilthey.com",
+		},
+	}
+
+	stream, err := client.AddUsers(context.Background())
+	if err != nil {
+		log.Fatalf("Could not create request", err)
+	}
+
+	for _, req := range reqs {
+		stream.Send(req)
+		time.Sleep(time.Second * 3)
+	}
+
+	res, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("Could not receive response", err)
+	}
+
+	fmt.Println(res)
 }
